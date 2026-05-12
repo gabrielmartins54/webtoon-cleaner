@@ -1,0 +1,8 @@
+WaifuprocessorCs/
+commands.txt
+rebuild_waifu_processor.ps1
+waifu.bat
+.venv/
+__pycache__
+node_modules/
+*.rar

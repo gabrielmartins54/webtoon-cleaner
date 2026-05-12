@@ -1,0 +1,8 @@
+[대사창]
+NONE
+
+[UI]
+NONE
+
+[기타]
+NONE
