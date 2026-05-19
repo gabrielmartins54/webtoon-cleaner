@@ -999,9 +999,6 @@ def process_images(
                 final_img[y_start:y_end, 0:w] = clean_tile_bgr
             except Exception as e:
                 print(f"DEBUG: Tile compose fail: {e}")
-
-        # Save Final PNG (optional preview)
-        # cv2.imwrite(str(out_path), final_img)
         
         # Save as layered PSD using pytoshop
         # Load original image and convert both to RGBA
@@ -1035,12 +1032,8 @@ def process_images(
         psd_ext = "psb" if psd_version == Version.psb else "psd"
         psd_path = output_dir / f"{img_path.stem}.{psd_ext}"
         with open(psd_path, 'wb') as f:
-            psd.write(f)
-
-        mask_path = output_dir / f"{img_path.stem}_mask.png"
-        cv2.imwrite(str(mask_path), final_mask)
-            
-        print(f"DEBUG: {img_path.name} finished. Created {psd_ext.upper()} and mask PNG.")
+            psd.write(f)            
+        print(f"DEBUG: {img_path.name} finished. Created {psd_ext.upper()}.")
         processed_count += 1
 
     return {

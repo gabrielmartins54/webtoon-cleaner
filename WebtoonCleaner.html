@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Webtoon Cleaner AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0f;
+      --surface:   #111118;
+      --card:      #16161f;
+      --border:    #2a2a3a;
+      --border-glow: #5b5bff44;
+      --text:      #e8e8f0;
+      --muted:     #888899;
+      --faint:     #444455;
+      --accent:    #7c6fff;
+      --accent2:   #a855f7;
+      --blue:      #4f8aff;
+      --green:     #22d3a0;
+      --red:       #ff5b5b;
+      --yellow:    #fbbf24;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,111,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,111,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Glow orbs */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      width: 700px; height: 500px;
+      background: radial-gradient(ellipse, rgba(124,111,255,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 80px;
+    }
+
+    /* ── Header ── */
+    header { text-align: center; margin-bottom: 40px; }
+
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(124,111,255,0.1);
+      border: 1px solid rgba(124,111,255,0.25);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    .logo-badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    h1 {
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #a78bff 0%, #7c6fff 40%, #4f8aff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+      line-height: 1.1;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    /* ── Card ── */
+    .card {
+      width: 100%;
+      max-width: 540px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 32px 64px rgba(0,0,0,0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(124,111,255,0.4), transparent);
+    }
+
+    /* ── Backend pill ── */
+    .backend-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(34,211,160,0.08);
+      border: 1px solid rgba(34,211,160,0.2);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 24px;
+      font-size: 11px;
+      color: var(--green);
+      word-break: break-all;
+    }
+
+    .backend-info svg { flex-shrink: 0; }
+
+    /* ── Drop Zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 14px;
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+      background: rgba(124,111,255,0.02);
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(124,111,255,0.06);
+    }
+
+    .drop-zone input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .drop-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .drop-hint {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .file-selected {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(124,111,255,0.12);
+      border: 1px solid rgba(124,111,255,0.3);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 12px;
+      margin-top: 20px;
+    }
+
+    /* ── Grid layout for settings ── */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .settings-grid .full { grid-column: 1 / -1; }
+
+    /* ── Form field ── */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    .field label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .field select,
+    .field input[type=text],
+    .field input[type=number] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .field select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888899' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 30px;
+    }
+
+    .field select:focus,
+    .field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,111,255,0.15);
+    }
+
+    .field select:disabled,
+    .field input:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .field select option { background: #1a1a28; }
+
+    /* ── Range slider ── */
+    .range-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type=range] {
+      flex: 1;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border);
+      border-radius: 4px;
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(124,111,255,0.5);
+      transition: transform 0.1s;
+    }
+
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    input[type=range]:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .range-value {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 24px 0;
+    }
+
+    /* ── Process button ── */
+    .btn-process {
+      width: 100%;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.1s, box-shadow 0.2s;
+      background: linear-gradient(135deg, #7c6fff, #4f8aff);
+      color: white;
+      box-shadow: 0 4px 24px rgba(124,111,255,0.35);
+      letter-spacing: 0.01em;
+    }
+
+    .btn-process::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .btn-process:hover::before { opacity: 1; }
+    .btn-process:hover { box-shadow: 0 8px 32px rgba(124,111,255,0.5); transform: translateY(-1px); }
+    .btn-process:active { transform: scale(0.98); }
+
+    .btn-process:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── Status box ── */
+    #status-box {
+      margin-top: 20px;
+      display: none;
+    }
+
+    .status-inner {
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+      border: 1px solid;
+    }
+
+    .status-inner.idle    { background: rgba(124,111,255,0.06); border-color: rgba(124,111,255,0.2); color: var(--accent); }
+    .status-inner.loading { background: rgba(251,191,36,0.06);  border-color: rgba(251,191,36,0.2); color: var(--yellow); }
+    .status-inner.success { background: rgba(34,211,160,0.06);  border-color: rgba(34,211,160,0.2); color: var(--green); }
+    .status-inner.error   { background: rgba(255,91,91,0.06);   border-color: rgba(255,91,91,0.2); color: var(--red); }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Progress bar ── */
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--blue));
+      width: 0%;
+      transition: width 0.3s ease;
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 32px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--faint);
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Tooltip badges ── */
+    .badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .badge-rec { background: rgba(34,211,160,0.15); color: var(--green); border: 1px solid rgba(34,211,160,0.3); }
+    .badge-gpu { background: rgba(124,111,255,0.15); color: var(--accent); border: 1px solid rgba(124,111,255,0.3); }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-badge">
+      <span class="dot"></span>
+      GPU Online · Modal Cloud
+    </div>
+    <h1>Webtoon Cleaner AI</h1>
+    <p class="subtitle">Remoção automática de texto de manhwa/webtoon com IA</p>
+  </header>
+
+  <!-- Card -->
+  <div class="card">
+
+    <!-- Backend indicator -->
+    <div class="backend-info">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+      <span id="backend-url">https://abraaor047--webtoon-cleaner-fastapi-app.modal.run</span>
+    </div>
+
+    <!-- Drop Zone -->
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".zip,.rar" />
+      <span class="drop-icon">📦</span>
+      <div class="drop-label">Arraste o arquivo aqui ou clique para selecionar</div>
+      <div class="drop-hint">Suporta .zip e .rar com imagens PNG/JPG</div>
+      <div class="file-selected" id="file-selected" style="display:none">
+        <span>📄</span>
+        <span id="file-name"></span>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="section-label">Configurações</div>
+
+    <div class="settings-grid">
+
+      <!-- Mask Engine -->
+      <div class="field full">
+        <label>Mask Engine (Detector de Texto)</label>
+        <select id="mask-engine">
+          <option value="onnx_textmask">ONNX TextMaskDetector ✦ Recomendado</option>
+          <option value="easyocr">EasyOCR + ko_webtoon_v2 + SAM2</option>
+          <option value="rtdetr">RT-DETR (rápido)</option>
+        </select>
+      </div>
+
+      <!-- Inpaint Model -->
+      <div class="field full">
+        <label>Modelo de Inpainting</label>
+        <select id="inpaint-model" onchange="onModelChange()">
+          <option value="default">LaMa (simple-lama) — padrão</option>
+          <option value="sdxl_fast_inpaint">SDXL Fast Inpaint — Turbo, mais rápido</option>
+          <option value="sd15_webtoon_inpaint">SD1.5 Webtoon Inpaint — balanceado</option>
+          <option value="flux_fill_inpaint">FLUX Fill Inpaint — melhor qualidade</option>
+        </select>
+      </div>
+
+      <!-- Inpaint Strength -->
+      <div class="field full" id="strength-field">
+        <label>Força do Inpainting</label>
+        <div class="range-wrapper">
+          <input type="range" id="strength-range" min="0.20" max="0.55" step="0.01" value="0.35"
+            oninput="document.getElementById('strength-val').textContent = parseFloat(this.value).toFixed(2)"
+            disabled />
+          <span class="range-value" id="strength-val">0.35</span>
+        </div>
+      </div>
+
+      <!-- LoRA Path -->
+      <div class="field full" id="lora-field">
+        <label>LoRA Path <span style="font-weight:400;text-transform:none;letter-spacing:0">(opcional, apenas SD1.5)</span></label>
+        <input type="text" id="lora-path" placeholder="C:\models\webtoon_lora.safetensors" disabled />
+      </div>
+
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Process Button -->
+    <button class="btn-process" id="btn-process" onclick="handleProcess()">
+      ⚡ Processar Imagens na GPU
+    </button>
+
+    <!-- Status -->
+    <div id="status-box">
+      <div class="status-inner idle" id="status-inner">
+        <span id="status-text"></span>
+        <div class="progress-bar" id="progress-bar" style="display:none">
+          <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>Backend GPU: <a href="https://modal.com/apps/abraaor047/main/deployed/webtoon-cleaner" target="_blank">Modal · webtoon-cleaner</a></p>
+    <p style="margin-top:4px">Modelos: ONNX TextMask · ko_webtoon_v2 · LaMa · SAM2</p>
+  </footer>
+
+</div>
+
+<script>
+  // ── Config ──────────────────────────────────────────────────────────────
+  const BACKEND = 'https://abraaor047--webtoon-cleaner-fastapi-app.modal.run';
+
+  // ── State ────────────────────────────────────────────────────────────────
+  let selectedFile = null;
+  let isProcessing = false;
+
+  // ── Drop zone ────────────────────────────────────────────────────────────
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files && fileInput.files[0]) setFile(fileInput.files[0]);
+  });
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+  });
+
+  function setFile(f) {
+    selectedFile = f;
+    document.getElementById('file-name').textContent = f.name + ' (' + (f.size / 1024 / 1024).toFixed(1) + ' MB)';
+    document.getElementById('file-selected').style.display = 'flex';
+  }
+
+  // ── Model change ─────────────────────────────────────────────────────────
+  function onModelChange() {
+    const m = document.getElementById('inpaint-model').value;
+    const isDiff = ['sdxl_fast_inpaint','flux_fill_inpaint','sd15_webtoon_inpaint'].includes(m);
+    const isSd15 = m === 'sd15_webtoon_inpaint';
+    document.getElementById('strength-range').disabled = !isDiff;
+    document.getElementById('lora-path').disabled = !isSd15;
+  }
+
+  // ── Status helpers ───────────────────────────────────────────────────────
+  function showStatus(msg, type, showProgress) {
+    const box = document.getElementById('status-box');
+    const inner = document.getElementById('status-inner');
+    const text = document.getElementById('status-text');
+    const progress = document.getElementById('progress-bar');
+    box.style.display = 'block';
+    inner.className = 'status-inner ' + (type || 'idle');
+    text.innerHTML = (type === 'loading' ? '<span class="spinner"></span>' : '') + msg;
+    progress.style.display = showProgress ? 'block' : 'none';
+  }
+
+  function animateProgress() {
+    const fill = document.getElementById('progress-fill');
+    let w = 0;
+    const iv = setInterval(() => {
+      if (!isProcessing) { fill.style.width = '100%'; clearInterval(iv); return; }
+      w = Math.min(w + Math.random() * 3, 90);
+      fill.style.width = w + '%';
+    }, 400);
+    return iv;
+  }
+
+  // ── Process ──────────────────────────────────────────────────────────────
+  async function handleProcess() {
+    if (!selectedFile) { showStatus('⚠ Selecione um arquivo .zip ou .rar primeiro.', 'error', false); return; }
+    if (isProcessing) return;
+
+    const inpaintModel = document.getElementById('inpaint-model').value;
+    const maskEngine   = document.getElementById('mask-engine').value;
+    const strength     = parseFloat(document.getElementById('strength-range').value);
+    const loraPath     = document.getElementById('lora-path').value.trim();
+
+    const isSdxlFast   = inpaintModel === 'sdxl_fast_inpaint';
+    const isFluxFill   = inpaintModel === 'flux_fill_inpaint';
+    const isSd15       = inpaintModel === 'sd15_webtoon_inpaint';
+    const isDiff       = isSdxlFast || isFluxFill || isSd15;
+
+    const redrawEngine   = isFluxFill ? 'flux' : isSd15 ? 'sd15' : 'sdxl';
+    const redrawSteps    = isSdxlFast ? 3 : isFluxFill ? 20 : isSd15 ? 14 : 16;
+    const redrawGuidance = isSdxlFast ? 0.0 : isFluxFill ? 20.0 : isSd15 ? 6.0 : 6.5;
+
+    const form = new FormData();
+    form.append('file', selectedFile);
+    form.append('mask_engine', maskEngine);
+    form.append('inpaint_model', inpaintModel);
+    form.append('high_quality_redraw', String(isDiff));
+    form.append('redraw_engine', redrawEngine);
+    form.append('redraw_denoise', String(isDiff ? strength : 0.35));
+    form.append('redraw_steps', String(redrawSteps));
+    form.append('redraw_guidance', String(redrawGuidance));
+    if (loraPath) form.append('redraw_lora_path', loraPath);
+
+    isProcessing = true;
+    document.getElementById('btn-process').disabled = true;
+    showStatus('Enviando para a GPU... (pode demorar ~30s no cold start)', 'loading', true);
+    const progressTimer = animateProgress();
+
+    try {
+      const res = await fetch(BACKEND + '/upload', {
+        method: 'POST',
+        body: form,
+      });
+
+      clearInterval(progressTimer);
+      document.getElementById('progress-fill').style.width = '100%';
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || 'HTTP ' + res.status);
+      }
+
+      const data = await res.json();
+
+      // Download result
+      let downloadUrl = data.download_url;
+      if (downloadUrl && !downloadUrl.startsWith('http')) {
+        downloadUrl = BACKEND + downloadUrl;
+      }
+      if (downloadUrl) {
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = data.filename || 'cleaned.zip';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
+      showStatus(
+        `✅ Processamento concluído! ${data.message || ''}<br>` +
+        `<small style="opacity:0.7">mask=${data.mask_engine} · model=${data.inpaint_model} · HQ=${data.high_quality_redraw}</small>`,
+        'success', false
+      );
+
+    } catch (err) {
+      clearInterval(progressTimer);
+      showStatus('❌ Erro: ' + (err.message || 'Erro desconhecido'), 'error', false);
+      console.error(err);
+    } finally {
+      isProcessing = false;
+      document.getElementById('btn-process').disabled = false;
+    }
+  }
+</script>
+</body>
+</html>

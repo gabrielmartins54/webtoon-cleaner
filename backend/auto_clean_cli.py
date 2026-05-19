@@ -7,7 +7,7 @@ from main import process_images
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run OCR/inpainting auto-clean on an image folder.")
     parser.add_argument("--input", required=True, help="Folder containing input images.")
-    parser.add_argument("--output", required=True, help="Folder where cleaned PSD/mask outputs are written.")
+    parser.add_argument("--output", required=True, help="Folder where cleaned PSD outputs are written.")
     parser.add_argument("--high-quality-redraw", action="store_true", help="Enable LaMa + SDXL/FLUX refinement.")
     parser.add_argument("--redraw-engine", default="sdxl", choices=["sdxl", "flux"], help="Generative redraw backend.")
     parser.add_argument("--redraw-prompt", default="clean webtoon panel, preserve original composition and lighting, consistent manga line art, remove text only")

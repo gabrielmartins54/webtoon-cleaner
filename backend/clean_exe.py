@@ -63,7 +63,7 @@ except Exception as e:
     ocr_reader = None
 
 def process_image(img_path: Path):
-    """ Processes a single image and saves PSD/PSB + mask PNG in the same folder """
+    """ Processes a single image and saves PSD/PSB in the same folder """
     if rt_model is None or lama is None:
         print(f"Skipping {img_path.name}: Models not loaded.")
         return
@@ -168,11 +168,8 @@ def process_image(img_path: Path):
     with open(output_path, 'wb') as f:
         psd.write(f)
 
-    # Save the combined mask used for inpainting.
-    mask_path = img_path.with_name(f"{img_path.stem}_mask.png")
-    cv2.imwrite(str(mask_path), final_mask)
         
-    print(f"DONE: {output_path.name} and {mask_path.name} saved next to original.")
+    print(f"DONE: {output_path.name} saved next to original.")
 
 def main():
     if len(sys.argv) < 2:

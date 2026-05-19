@@ -1051,10 +1051,7 @@ def process_images(
         with open(psd_path, 'wb') as f:
             psd.write(f)
 
-        mask_path = output_dir / f"{img_path.stem}_mask.png"
-        cv2.imwrite(str(mask_path), final_mask)
-            
-        print(f"DEBUG: {img_path.name} finished. Created PSD and mask PNG.")
+        print(f"DEBUG: {img_path.name} finished. Created PSD.")
         processed_count += 1
 
     return {
